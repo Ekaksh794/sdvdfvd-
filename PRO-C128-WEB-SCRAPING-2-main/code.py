@@ -1,43 +1,31 @@
-import csv
 from bs4 import BeautifulSoup
 import requests
-import time
+import pandas as pd
 
+START_URL = (
+    "https://en.wikipedia.org/wiki/List_of_brightest_stars_and_other_record_stars"
+)
+wiki = requests.get(START_URL)
+soup = BeautifulSoup(wiki.text, "html.parser")
+temp_list = []
+for tr in soup.find("table").find_all("tr"):
+    td = tr.find_all("td")
+    row = [i.text.rstrip() for i in td]
+    temp_list.append(row)
 
-START_URL = "https://www.windows2universe.org/our_solar_system/moons_table.html"
-headers = ["name", "year_discovered", "discoverer", "distance_from_planet (km)", "diameter (km)", "orbital_period", "host_planet"]
-moons_data = []
-page = requests.get(START_URL, verify=False)
+name = []
+distance = []
+mass = []
+radius = []
 
-def scrape_table(table):
-    table_on = table.find_all("tr", attrs={"align": "left", "valign": "top"})[0]
-    table_on = str(table_on.find_all("strong")[0]).replace("\r", " ").split(" ")[0].split(">")[1]
-    for tr_tag in table.find_all("tr", attrs={"align": "center", "valign": "center"}):
-        temp_list = []
-        for index, td_tag in enumerate(tr_tag.find_all("td")):
-            if index == 0:
-                try:
-                    temp_list.append(
-                        td_tag.find_all("a")[0].contents[0]
-                    )
-                except:
-                    try:
-                        temp_list.append(td_tag.find_all("strong")[0].contents[0])
-                    except:
-                        temp_list.append(td_tag.contents[0])
-            else:
-                temp_list.append(td_tag.contents[0])
-        temp_list.append(table_on)
-        moons_data.append(temp_list)
+for i in range(1, len(temp_list)):
+    name.append(temp_list[i][1])
+    distance.append(temp_list[i][3])
+    mass.append(temp_list[i][5])
+    radius.append(temp_list[i][6])
 
-soup = BeautifulSoup(page.content, "html.parser")
-for index, table in enumerate(soup.find_all("table", attrs={"border": "5"})):
-    if index == 0:
-        continue
-    else:
-        scrape_table(table)
-
-with open("main.csv", "w") as f:
-    csvwriter = csv.writer(f)
-    csvwriter.writerow(headers)
-    csvwriter.writerows(moons_data)
+df = pd.DataFrame(
+    list(zip(name, distance, mass, radius)),
+    columns=["Star_name", "Distance", "Mass", "Radius"],
+)
+df.to_csv("data.csv")
